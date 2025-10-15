@@ -8,6 +8,9 @@
 #
 # The code automatically uses GPU if available.
 #
+# NOTE: Set your WANDB API Key in the following var first!
+#	WANDB_API_KEY
+#
 
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
@@ -32,8 +35,13 @@ RUNNAME="vcc-comp-run"
 
 # -- wandb
 
-export WANDB_API_KEY=a5d227e76d48be5bfd03604c1d02c2c78c761435
-export WANDB_BASE_URL=https://czi.wandb.io
+if [ -z "$WANDB_API_KEY" ]; then
+    echo "WANDB_API_KEY is not set!"
+fi
+
+if [ -z "$WANDB_BASE_URL" ]; then
+    export WANDB_BASE_URL=https://czi.wandb.io
+fi
 
 
 # -- Options from command line
@@ -132,9 +140,9 @@ echo "-------------------------"
 echo
 
 
-# -- Predict and evaluate
+# -- Predict, produce output in VCC format
 
-echo "Starting prediction and metrics ..."
+echo "Starting prediction ..."
 
 uv run state tx infer \
   --output "${OUTPUTDIR}/prediction.h5ad" \
@@ -143,8 +151,17 @@ uv run state tx infer \
   --adata "${DATADIR}/competition_val_template.h5ad" \
   --pert-col "target_gene"
 
+
+# ... now convert predictions into VCC submission format
+
 echo
-echo "   Evaluation completed"
+echo "Preparing VCC submission format ..."
+
+uv run cell-eval prep -i ${OUTPUTDIR}/prediction.h5ad -g ${DATADIR}/gene_names.csv
+
+echo
+echo "   Predictions completed"
+echo "   Output is in: ${OUTPUTDIR}/prediction.prep.vcc"
 echo "-------------------------"
 echo
 

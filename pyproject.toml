@@ -10,10 +10,15 @@ authors = [
     { name = "Rajesh Ilango" },
     { name = "Dhruv Gautam", email = "dhruvgautam@berkeley.edu" },
 ]
-requires-python = ">=3.10,<3.13"
+# [Sunil] Use Python 3.12 to fix SEGV error when running `state tx preprocess_train`, during `sc.pp.normalize_total()`.
+#         ... also update contents of `./.python-version` to "3.12".
+#requires-python = ">=3.10,<3.13"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "anndata>=0.11.4",
-    "cell-load>=0.8.3",
+# [Sunil] Replace with reference to local copy of cell-load (see [tool.uv.sources] below)
+#    "cell-load>=0.8.3",
+    "cell-load",
     "numpy>=2.2.6",
     "pandas>=2.2.3",
     "pyyaml>=6.0.2",
@@ -30,7 +35,14 @@ dependencies = [
     "cell-eval>=0.5.22",
     "ipykernel>=6.30.1",
     "scipy>=1.15.0",
+# [Sunil] Added
+    "hdf5plugin>=6.0.0",	# to compress preprocessing output
+    "tabulate>=0.9.0",		# for DataFrame.to_markdown()
 ]
+
+# [Sunil] Relative paths to the following local dependencies
+[tool.uv.sources]
+cell-load = { path = "../cell-load", editable = true }
 
 [project.optional-dependencies]
 vectordb = [

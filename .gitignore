@@ -11,5 +11,9 @@ notebooks/
 *.sif
 *.slurm
 temp
+# Ignore local run-related dirs
 wandb/
+wandb_logs/
 Runs/
+# ... and files
+*log*.txt

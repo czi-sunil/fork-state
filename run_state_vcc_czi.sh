@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 #
-# Train the State model on VCC data provided by the State team
-#	Downloaded from 
-#	https://storage.googleapis.com/vcc_data_prod/datasets/state/competition_support_set.zip
+# Train the State model on VCC data curated by CZI
 # 
-# and then produce metrics.
 #
 # The code automatically uses GPU if available.
 #
@@ -31,7 +28,7 @@ MAXSTEPS=100
 CKPTSTEPS=25
 
 # Run name
-RUNNAME="vcc-comp-run"
+RUNNAME="vcc-czi-run"
 
 
 # -- wandb
@@ -86,19 +83,15 @@ echo "CKPTSTEPS = $CKPTSTEPS"
 echo
 
 
-# -- Chdir and invoke venv
+# -- Invoke venv
 
-echo "Changing dir to ${SCRIPT_DIR}"
-echo
-cd $SCRIPT_DIR
-
-source .venv/bin/activate
+source ${SCRIPT_DIR}/.venv/bin/activate
 
 # -- Paths
 
 RUNDIR=./Runs
 
-DATADIR=../../Data/Arc/competition_support_set
+DATADIR=../../Data/Arc/vcc_curated
 
 OUTPUTDIR=${RUNDIR}/vcc
 
@@ -119,11 +112,11 @@ fi
 echo "Starting training ..."
 
 uv run state tx train \
-  data.kwargs.toml_config_path="${DATADIR}/starter.toml" \
+  data.kwargs.toml_config_path="${DATADIR}/statecfg.toml" \
   data.kwargs.num_workers=8 \
-  data.kwargs.batch_col="batch_var" \
+  data.kwargs.batch_col="batch" \
   data.kwargs.pert_col="target_gene" \
-  data.kwargs.cell_type_key="cell_type" \
+  data.kwargs.cell_type_key="tissue_ontology_term_id" \
   data.kwargs.control_pert="non-targeting" \
   data.kwargs.perturbation_features_file="${DATADIR}/ESM2_pert_features.pt" \
   training.max_steps=${MAXSTEPS} \
@@ -135,37 +128,37 @@ uv run state tx train \
   output_dir="${OUTPUTDIR}" \
   name="${RUNNAME}"
 
+if [ $? -ne 0 ]; then
+    echo
+    echo "Training failed!"
+    echo
+    exit 1
+fi
+
 echo
 echo "   Training completed"
 echo "-------------------------"
 echo
 
 
-# -- Predict, produce output in VCC format
+# -- Predict and score
 
 echo "Starting prediction ..."
 
-uv run state tx infer \
-  --output "${OUTPUTDIR}/prediction.h5ad" \
-  --model-dir "${OUTPUTDIR}/${RUNNAME}" \
-  --checkpoint "${OUTPUTDIR}/${RUNNAME}/checkpoints/last.ckpt" \
-  --adata "${DATADIR}/competition_val_template.h5ad" \
-  --pert-col "target_gene"
+uv run state tx predict --output-dir "${OUTPUTDIR}/${RUNNAME}" --checkpoint "last.ckpt"
 
-
-# ... now convert predictions into VCC submission format
-
-echo
-echo "Preparing VCC submission format ..."
-
-uv run cell-eval prep -i ${OUTPUTDIR}/prediction.h5ad -g ${DATADIR}/gene_names.csv
+if [ $? -ne 0 ]; then
+    echo
+    echo "Predict failed!"
+    echo
+    exit 1
+fi
 
 echo
-echo "   Predictions completed"
-echo "   Output is in: ${OUTPUTDIR}/prediction.prep.vcc"
+echo "   Predictions and Metrics completed"
+echo "   Output is in: ${OUTPUTDIR}/${RUNNAME}/eval_last.ckpt/"
 echo "-------------------------"
 echo
-
 
 echo "-- ${CMD} --"
 echo "Started at: ${start_date}"

@@ -76,7 +76,7 @@ source ${SCRIPT_DIR}/.venv/bin/activate
 echo "Processing data ..."
 echo
 
-state tx preprocess_train \
+uv run state tx preprocess_train \
   --adata ${RAW_DATA} \
   --output ${OUT_DATA} \
   --num_hvgs ${NUM_HVGS}

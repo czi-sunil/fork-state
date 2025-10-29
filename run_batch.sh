@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #
-# Train the State model on VCC data curated by CZI.
-# NOTE: First use `run_preprocess_trng.sh` to prepare the data from raw counts.
+# Train the State model on VCC data curated by CZI
 # 
 #
 # The code automatically uses GPU if available.
@@ -11,13 +10,12 @@
 #	WANDB_BASE_URL ... default value is "https://czi.wandb.io"
 #
 
-# -- Get path to this script
+# Exit on any error
+set -e
 
-# Get the absolute full path of the script, resolving any symlinks
-SCRIPT_FULL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+# --
 
-# Extract the directory from the absolute path
-SCRIPT_DIR="$(dirname "$SCRIPT_FULL_PATH")"
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 CMD=`basename -- "${BASH_SOURCE[0]}"`
 
@@ -29,18 +27,73 @@ echo
 # -- Options
 
 # Recommended: >= 40000
-MAXSTEPS=100
+MAXSTEPS=4000
 
 # Recommended: 20000
-CKPTSTEPS=25
+VALSTEPS=200
 
 # Run name
-RUNNAME="vcc-czi-run"
+RUNNAME="vcc-czi-batch-run"
 
 
-# -- My init scr, and wandb
+# -- Options from command line
 
-if [[ "${SCRIPT_DIR}" == /mnt/* ]]; then
+function Usage {
+    echo "Usage: ${CMD} [-h] [-m MAX_STEPS] [-v VALIDATION_FREQ_STEPS]"
+    echo
+    echo "Defaults: MAX_STEPS=${MAXSTEPS}, VALIDATION_FREQ_STEPS=${VALSTEPS}"
+    echo
+    echo "  MAX_STEPS = max nbr batches for training"
+    echo "  VALIDATION_FREQ_STEPS = Validation frequency (nbr batches), and checkpoint freq."
+    echo
+}
+
+
+OPTSTRING=":hm:v:"
+
+while getopts "$OPTSTRING" opt; do
+  case ${opt} in
+      h)
+      Usage
+      exit 0
+      ;;
+    m)
+      MAXSTEPS=${OPTARG}
+      ;;
+    v)
+      VALSTEPS=${OPTARG}
+      ;;
+    \?)
+      # Handles invalid options (e.g., -x)
+      Usage
+      exit 1
+      ;;
+    :)
+      # Handles missing arguments for options that require them (e.g., -m without a value)
+      Usage
+      exit 1
+      ;;
+  esac
+done
+
+# Shift processed options so that positional arguments remain in $@
+shift $((OPTIND - 1))
+
+
+function ShowOpts {
+    echo "Running with following options:"
+    echo "MAXSTEPS = ${MAXSTEPS}"
+    echo "VALSTEPS = ${VALSTEPS}"
+    echo "RUNNAME = ${RUNNAME}"
+    echo
+}
+
+ShowOpts
+
+
+# -- wandb
+
+if [[ -z "$WANDB_API_KEY" && "${SCRIPT_DIR}" == /mnt/* ]]; then
     MY_INIT_SCR="/mnt/vcm-perturbation-v1/sunil/cluster.sh"
 
     if [ -e "${MY_INIT_SCR}" ]; then
@@ -58,52 +111,9 @@ if [ -n "$WANDB_API_KEY" ] && [ -z "$WANDB_BASE_URL" ]; then
 fi
 
 
-# -- Options from command line
-
-OPTSTRING=":hm:c:"
-
-while getopts "$OPTSTRING" opt; do
-  case ${opt} in
-    h)
-      echo "Usage: ${CMD} [-h] [-m MAX_STEPS] [-c CHECKPOINT_STEPS]"
-      exit 0
-      ;;
-    m)
-      MAXSTEPS=${OPTARG}
-      ;;
-    c)
-      CKPTSTEPS=${OPTARG}
-      ;;
-    \?)
-      # Handles invalid options (e.g., -x)
-      echo "Error: Invalid option -${OPTARG}." >&2
-      echo "Usage: ${CMD} [-h] [-m MAX_STEPS] [-c CHECKPOINT_STEPS]" >&2
-      exit 1
-      ;;
-    :)
-      # Handles missing arguments for options that require them (e.g., -m without a value)
-      echo "Error: Option -${OPTARG} requires an argument." >&2
-      echo "Usage: ${CMD} [-h] [-m MAX_STEPS] [-c CHECKPOINT_STEPS]" >&2
-      exit 1
-      ;;
-  esac
-done
-
-# Shift processed options so that positional arguments remain in $@
-shift $((OPTIND - 1))
-
-
-function ShowOpts {
-    echo "Running with following options:"
-    echo "MAXSTEPS = $MAXSTEPS"
-    echo "CKPTSTEPS = $CKPTSTEPS"
-    echo "RUNNAME = ${RUNNAME}"
-    echo
-}
-
-ShowOpts
-
 # -- Invoke venv
+
+cd "${SCRIPT_DIR}"
 
 source ${SCRIPT_DIR}/.venv/bin/activate
 
@@ -113,10 +123,20 @@ RUNDIR=./Runs
 
 DATADIR=../../Data/Arc/vcc_curated
 
-OUTPUTDIR=${RUNDIR}/vcc
+OUTPUTDIR=${RUNDIR}/vcc_gx
 
 TRNG_LOGFILE="${RUNDIR}/log_${RUNNAME}.txt"
 
+# Capture all remaining output to TRNG_LOGFILE
+
+echo "Remaining logs captured in: ${TRNG_LOGFILE}"
+
+exec &> "${TRNG_LOGFILE}"
+
+ShowOpts
+
+
+# -- Check paths
 
 if [ ! -d "${RUNDIR}" ]; then
     mkdir -pv $RUNDIR
@@ -127,30 +147,27 @@ if [ ! -d "${DATADIR}" ]; then
     exit 1
 fi
 
+# If RUNNAME exists then delete it
 
-# -- Capture all remaining output to TRNG_LOGFILE
-
-echo
-echo "Output logs sent to: ${TRNG_LOGFILE}"
-echo
-
-exec &> "${TRNG_LOGFILE}"
-
-
-ShowOpts
+if [ -d "${OUTPUTDIR}/${RUNNAME}" ]; then
+    echo "Clearing old RUNNAME dir"
+    rm -rf "${OUTPUTDIR}/${RUNNAME}"
+fi
 
 
 # --  Train
 
 echo "Starting training ..."
-echo
+
+# Checkpoint after every validation
 
 uv run state tx train \
   +experiment=vcc_czi \
   datadir="${DATADIR}" \
   training.max_steps=${MAXSTEPS} \
-  training.ckpt_every_n_steps=${CKPTSTEPS} \
-  training.devices=1 \
+  training.val_freq=${VALSTEPS} \
+  training.ckpt_every_n_steps=${VALSTEPS} \
+  training.devices=auto \
   wandb.tags="[${RUNNAME}]" \
   wandb.project=pert-vcc-st \
   wandb.entity="" \

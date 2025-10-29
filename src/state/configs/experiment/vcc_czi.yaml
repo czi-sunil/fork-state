@@ -1,0 +1,30 @@
+# @package _global_
+#
+# config for training on czi-curated VCC data
+#
+
+defaults:
+  - override /data: perturbation
+  - override /model: state_sm
+
+# Top level parameters
+
+log_level: "INFO"     # One of: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
+datadir: ???          # Required. Dir where all input data files are. Used below.
+
+# Sub-level params
+
+data:
+  kwargs:
+    num_workers: 8
+    # About the data file
+    batch_col: "batch"                          # col-name for the batch label
+    pert_col: "target_gene"                     # col-name for the Perturbation label
+    cell_type_key: "tissue_ontology_term_id"    # col-name for the Cell-Type
+    control_pert: "non-targeting"               # Perturbation label value for Control Cells
+    embed_key: "X_hvg"                          # Tell ST to use HVGs, from `adata.obsm["X_hvg"]`
+    output_space: "gene"                        # ST model, predicting gene expression.
+    # Data files
+    toml_config_path: "${datadir}/statecfg.toml"  # Describes the data
+    # Genetic perturbation features, based on tergeted gene,  from ESM2
+    perturbation_features_file: "${datadir}/ESM2_pert_features.pt"    # torch dict: targeted gene -> embedding vector

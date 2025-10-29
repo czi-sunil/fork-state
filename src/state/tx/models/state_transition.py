@@ -7,6 +7,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# [Sunil] Added, for informative msgs
+import torch.distributed as dist
+
 from geomloss import SamplesLoss
 from typing import Tuple
 
@@ -15,8 +18,23 @@ from .decoders import FinetuneVCICountsDecoder
 from .decoders_nb import NBDecoder, nb_nll
 from .utils import build_mlp, get_activation_class, get_transformer_backbone, apply_lora
 
+from state.misc.torchutils import pp_arr_struct
+from state.misc.utils import buffered_stdout
+
+
+# -----------------------------------------------------------------------------
+#   Globals
+# -----------------------------------------------------------------------------
+
+DEBUG = True
+
 
 logger = logging.getLogger(__name__)
+
+
+# -----------------------------------------------------------------------------
+#   Classes
+# -----------------------------------------------------------------------------
 
 
 class CombinedLoss(nn.Module):
@@ -435,7 +453,7 @@ class StateTransitionPerturbationModel(PerturbationModel):
 
             # create a [1,1,S,S] mask (now S+1 if confidence token is used)
             base = torch.eye(seq_length, device=device, dtype=torch.bool).view(1, 1, seq_length, seq_length)
-            
+
             # Get number of attention heads from model config
             num_heads = self.transformer_backbone.config.num_attention_heads
 
@@ -499,6 +517,22 @@ class StateTransitionPerturbationModel(PerturbationModel):
 
     def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int, padded=True) -> torch.Tensor:
         """Training step logic for both main model and decoder."""
+
+        # [Sunil] Added
+        if DEBUG and batch_idx < 4:
+            with buffered_stdout():
+                print("\n***********************************************************")
+                print(f"StateTransitionPerturbationModel.training_step: {batch_idx=}, {self.training=}, {self.device=}")
+
+                if dist.is_available() and dist.is_initialized():
+                    dist_world_size = dist.get_world_size()
+                    dist_rank = dist.get_rank()
+                    print(f"... World size: {dist_world_size}, rank: {dist_rank}")
+                    print()
+
+                pp_arr_struct("batch", batch)
+                print("\n***********************************************************\n")
+
         # Get model predictions (in latent space)
         confidence_pred = None
         if self.confidence_token is not None:

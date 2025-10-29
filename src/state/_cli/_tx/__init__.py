@@ -13,6 +13,7 @@ __all__ = [
     "run_tx_preprocess_train",
     "run_tx_preprocess_infer",
     "add_arguments_tx",
+    "add_arguments_tx2",
 ]
 
 
@@ -24,3 +25,24 @@ def add_arguments_tx(parser: ap.ArgumentParser):
     add_arguments_infer(subparsers.add_parser("infer"))
     add_arguments_preprocess_train(subparsers.add_parser("preprocess_train"))
     add_arguments_preprocess_infer(subparsers.add_parser("preprocess_infer"))
+
+
+# [Sunil] Added func:
+def add_arguments_tx2(parser: ap.ArgumentParser):
+    """
+    Copy of the "tx command",
+       # that has a required argument: CONFIG_FILE.
+    Remaining args are the same.
+    """
+    subparsers = parser.add_subparsers(required=True, dest="subcommand")
+
+    # Subcommand: tx2 train
+    train_parser = subparsers.add_parser("train", add_help=False)
+
+    # required arg
+    # train_parser.add_argument('config_file', type=str,
+    #                           help="Path to Hydra Config file for this run.")
+
+    add_arguments_train(train_parser)
+
+    return

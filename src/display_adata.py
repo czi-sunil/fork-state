@@ -6,6 +6,8 @@ from IPython.display import display
 
 import pandas as pd
 import scanpy as sc
+# noinspection PyUnresolvedReferences
+import hdf5plugin
 
 
 def reset_df_index(df: pd.DataFrame, restart: int = 1) -> pd.DataFrame:
@@ -17,16 +19,28 @@ def reset_df_index(df: pd.DataFrame, restart: int = 1) -> pd.DataFrame:
 
 
 def pp_adata(adata):
+    if isinstance(adata, str):
+        adata = sc.read_h5ad(adata, backed="r")
+
     print(f"Dataset shape: {adata.shape}")
     print(f"Number of cells: {adata.n_obs:,d}")
     print(f"Number of genes: {adata.n_vars:,d}")
     print()
+
     print('-- Display:')
     display(adata)
     print()
+
     print('-- Display adata.obs.head:')
     display(adata.obs.head())
     print()
+
+    if 'X_hvg' in adata.obsm:
+        print("-- adata.obsm['X_hvg']")
+        # noinspection PyUnresolvedReferences
+        print(f"shape = {adata.obsm['X_hvg'].shape}")
+        print()
+
     print('-- Display adata.var.head:')
     display(adata.var.head())
     print()
@@ -36,6 +50,10 @@ def pp_adata(adata):
                                    columns=["obs.col", "nUniq-vals"])
     print(reset_df_index(df).to_markdown(intfmt=",", floatfmt=",.0f"))
     print()
+
+    if adata.isbacked:
+        adata.file.close()
+
     return
 
 

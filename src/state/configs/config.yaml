@@ -4,9 +4,10 @@ defaults:
   - data: perturbation
   - model: pertsets
   - training: default
-  - wandb: default
+# [Sunil] wandb defaults provided below
+#  - wandb: default
   - _self_
-  
+
 
 # output_dir must be an absolute path (so that launch scripts are fully descriptive)
 name: debug
@@ -16,6 +17,16 @@ overwrite: false
 return_adatas: false
 pred_adata_path: null
 true_adata_path: null
+
+# [Sunil] Added missing wandb defaults
+#   entity: ""
+#   project: Name of the project
+#   tags: typically "[ Run-name ]"
+wandb:
+  entity: null
+  project: state
+  local_wandb_dir: ./wandb_logs
+  tags: null
 
 # don't save hydra output
 hydra:

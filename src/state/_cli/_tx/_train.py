@@ -2,6 +2,8 @@ import argparse as ap
 
 from omegaconf import DictConfig, OmegaConf
 
+import torch.distributed as dist
+
 
 def add_arguments_train(parser: ap.ArgumentParser):
     # Allow remaining args to be passed through to Hydra
@@ -107,6 +109,25 @@ def run_tx_train(cfg: DictConfig):
         cfg["data"]["kwargs"]["transform"] = "log-normalize"
     elif cfg["model"]["name"].lower() == "scvi":
         cfg["data"]["kwargs"]["transform"] = None
+
+    # [Sunil] Added
+    if dist.is_available() and dist.is_initialized():
+        dist_world_size = dist.get_world_size()
+        dist_rank = dist.get_rank()
+        logger.info(
+            f"Distributed mode enabled. World size: {dist_world_size}, rank: {dist_rank}."
+        )
+
+        # Reduce per-GPU batch_size so that total batch size is roughly the same
+        if dist_world_size > 1:
+            total_batch_sz = cfg["training"]["batch_size"]
+            per_gpu_batch_sz = max(1, total_batch_sz // dist_world_size)
+            cfg["training"]["batch_size"] = per_gpu_batch_sz
+            new_total_batch_sz = per_gpu_batch_sz * dist_world_size
+            logger.info(
+                f"Distributed mode {dist_rank=}/{dist_world_size}: {per_gpu_batch_sz=}, {new_total_batch_sz=}, "
+                f"old {total_batch_sz=}."
+            )
 
     data_module: PerturbationDataModule = get_datamodule(
         cfg["data"]["name"],
@@ -242,10 +263,13 @@ def run_tx_train(cfg: DictConfig):
     else:
         plugins = []
 
-    if torch.cuda.is_available():
-        accelerator = "gpu"
-    else:
-        accelerator = "cpu"
+    # [Sunil] set accelerator to "auto"
+    accelerator = "auto"
+
+    # if torch.cuda.is_available():
+    #     accelerator = "gpu"
+    # else:
+    #     accelerator = "cpu"
 
     # Decide on trainer params
     trainer_kwargs = dict(
@@ -284,6 +308,7 @@ def run_tx_train(cfg: DictConfig):
     print(f"CUDA memory reserved: {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
 
     logger.info("Starting trainer fit.")
+    logger.info(f"model class = {model.__class__}")
 
     # if a checkpoint does not exist, start with the provided checkpoint
     # this is mainly used for pretrain -> finetune workflows

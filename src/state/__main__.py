@@ -1,11 +1,13 @@
 import argparse as ap
+import logging      # [Sunil] Added
 
 from hydra import compose, initialize
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from ._cli import (
     add_arguments_emb,
     add_arguments_tx,
+    add_arguments_tx2,
     run_emb_fit,
     run_emb_transform,
     run_emb_query,
@@ -26,6 +28,9 @@ def get_args() -> tuple[ap.Namespace, list[str]]:
     add_arguments_emb(subparsers.add_parser("emb"))
     add_arguments_tx(subparsers.add_parser("tx"))
 
+    # [Sunil] Added copy of "tx" except one required arg
+    add_arguments_tx2(subparsers.add_parser("tx2"))
+
     # Use parse_known_args to get both known args and remaining args
     return parser.parse_args()
 
@@ -43,8 +48,18 @@ def load_hydra_config(method: str, overrides: list[str] = None) -> DictConfig:
                 cfg = compose(config_name="state-defaults", overrides=overrides)
             case "tx":
                 cfg = compose(config_name="config", overrides=overrides)
+
+            # [Sunil] Added
+            case "tx2":
+                cfg = compose(config_name="config", overrides=overrides)
+
             case _:
                 raise ValueError(f"Unknown method: {method}")
+
+    # [Sunil] Added logging level
+    if "log_level" in cfg:
+        logging.basicConfig(level=getattr(logging, cfg["log_level"].upper()))
+
     return cfg
 
 
@@ -52,19 +67,23 @@ def show_hydra_help(method: str):
     """Show Hydra configuration help with all parameters"""
     from omegaconf import OmegaConf
 
+    cmd = method
+    if method == "tx2":
+        method = "tx"
+
     # Load the default config to show structure
     cfg = load_hydra_config(method)
 
     print("Hydra Configuration Help")
     print("=" * 50)
-    print(f"Configuration for method: {method}")
+    print(f"Configuration for method: {cmd}")
     print()
     print("Full configuration structure:")
     print(OmegaConf.to_yaml(cfg))
     print()
     print("Usage examples:")
     print("  Override single parameter:")
-    print("    uv run state tx train data.batch_size=64")
+    print(f"    uv run state tx train data.batch_size=64")
     print()
     print("  Override nested parameter:")
     print("    uv run state tx train model.kwargs.hidden_dim=512")
@@ -130,6 +149,25 @@ def main():
                 case "preprocess_infer":
                     # Run inference preprocessing using argparse
                     run_tx_preprocess_infer(args.adata, args.output, args.control_condition, args.pert_col, args.seed)
+
+        # [Sunil] Added for testing
+        case "tx2":
+            match args.subcommand:
+                case "train":
+                    if hasattr(args, "help") and args.help:
+                        # Show Hydra configuration help
+                        show_hydra_help("tx2")
+                    else:
+                        # Load Hydra config with overrides for sets training
+                        cfg = load_hydra_config("tx2", args.hydra_overrides)
+                        print()
+                        print(f"data.kwargs.toml_config_path =", cfg.data.kwargs.toml_config_path)
+                        print(f"data.kwargs.perturbation_features_file =", cfg.data.kwargs.perturbation_features_file)
+                        print()
+                        print(OmegaConf.to_yaml(cfg, resolve=True))
+                        # run_tx_train(cfg)
+                case _:
+                    raise NotImplementedError(f"Command not implemented: {args.command} {args.subcommand}")
 
 
 if __name__ == "__main__":

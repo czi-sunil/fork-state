@@ -35,7 +35,7 @@ MAXSTEPS=100
 CKPTSTEPS=25
 
 # Run name
-RUNNAME="vcc-czi-run"
+RUNNAME="tx2-test"
 
 
 # -- My init scr, and wandb
@@ -113,7 +113,7 @@ RUNDIR=./Runs
 
 DATADIR=../../Data/Arc/vcc_curated
 
-OUTPUTDIR=${RUNDIR}/vcc
+OUTPUTDIR=${RUNDIR}/vcc_g1
 
 TRNG_LOGFILE="${RUNDIR}/log_${RUNNAME}.txt"
 
@@ -130,11 +130,11 @@ fi
 
 # -- Capture all remaining output to TRNG_LOGFILE
 
-echo
-echo "Output logs sent to: ${TRNG_LOGFILE}"
-echo
+# echo
+# echo "Output logs sent to: ${TRNG_LOGFILE}"
+# echo
 
-exec &> "${TRNG_LOGFILE}"
+# exec &> "${TRNG_LOGFILE}"
 
 
 ShowOpts
@@ -145,7 +145,9 @@ ShowOpts
 echo "Starting training ..."
 echo
 
-uv run state tx train \
+#  datadir="${DATADIR}" \
+
+uv run state tx2 train \
   +experiment=vcc_czi \
   datadir="${DATADIR}" \
   training.max_steps=${MAXSTEPS} \
@@ -169,27 +171,3 @@ echo "   Training completed"
 echo "-------------------------"
 echo
 
-
-# -- Predict and score
-
-echo "Starting prediction ..."
-
-uv run state tx predict --output-dir "${OUTPUTDIR}/${RUNNAME}" --checkpoint "last.ckpt"
-
-if [ $? -ne 0 ]; then
-    echo
-    echo "Predict failed!"
-    echo
-    exit 1
-fi
-
-echo
-echo "   Predictions and Metrics completed"
-echo "   Output is in: ${OUTPUTDIR}/${RUNNAME}/eval_last.ckpt/"
-echo "-------------------------"
-echo
-
-echo "-- ${CMD} --"
-echo "Started at: ${start_date}"
-echo "All Completed at:" `date`
-echo

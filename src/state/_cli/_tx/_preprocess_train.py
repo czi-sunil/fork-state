@@ -36,14 +36,12 @@ def run_tx_preprocess_train(adata_path: str, output_path: str, num_hvgs: int):
 
     import anndata as ad
     import scanpy as sc
-    # [Sunil]
-    import os
     import hdf5plugin
 
     logger = logging.getLogger(__name__)
 
-    # [Sunil] get logging leve from env var 'LOGLEVEL'
-    logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
+    # [Sunil] Added log-level
+    logging.basicConfig(level=logging.INFO)
 
     logger.info(f"Loading AnnData from {adata_path}")
     adata = ad.read_h5ad(adata_path)
@@ -66,3 +64,5 @@ def run_tx_preprocess_train(adata_path: str, output_path: str, num_hvgs: int):
     adata.write_h5ad(output_path, compression=hdf5plugin.FILTERS["zstd"])
 
     logger.info(f"Preprocessing complete. Selected {adata.var.highly_variable.sum()} highly variable genes.")
+
+    return

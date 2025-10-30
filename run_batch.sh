@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 #
-# Train the State model on VCC data curated by CZI
+# Train the State model on VCC-curated dataset
 # 
 #
-# The code automatically uses GPU if available.
+# The code automatically uses all GPUs, if available.
 #
 # NOTE: Set your WANDB API Key in the following var first!
 #	WANDB_API_KEY
 #	WANDB_BASE_URL ... default value is "https://czi.wandb.io"
+#
+#       Edit the Options below before using!
 #
 
 # Exit on any error
@@ -24,7 +26,7 @@ echo "Start: ${start_date}"
 echo
 
 
-# -- Options
+# -- Options: command-line
 
 # Recommended: >= 40000
 MAXSTEPS=4000
@@ -32,11 +34,36 @@ MAXSTEPS=4000
 # Recommended: 20000
 VALSTEPS=200
 
+
+# -- Options: edit here
+
+# Path to this experiment's data
+DATADIR=../../Data/Arc/vcc_curated
+
+# Experiment name (base name of config file)
+EXPERIMENT=vcc_state_sm
+
+# Run sub-dir
+RUN_SUBDIR="vcc_gx"
+
 # Run name
-RUNNAME="vcc-czi-batch-run"
+RUNNAME="${EXPERIMENT}-batch-run"
 
 
 # -- Options from command line
+
+function ShowOpts {
+    echo "Running with following options:"
+    echo "MAXSTEPS = ${MAXSTEPS}"
+    echo "VALSTEPS = ${VALSTEPS}"
+    echo
+    echo "RUNNAME = ${RUNNAME}"
+    echo "RUN_SUBDIR = ${RUN_SUBDIR}"
+    echo
+    echo "EXPERIMENT = ${EXPERIMENT}"
+    echo "DATADIR = ${DATADIR}"
+    echo
+}
 
 function Usage {
     echo "Usage: ${CMD} [-h] [-m MAX_STEPS] [-v VALIDATION_FREQ_STEPS]"
@@ -46,6 +73,10 @@ function Usage {
     echo "  MAX_STEPS = max nbr batches for training"
     echo "  VALIDATION_FREQ_STEPS = Validation frequency (nbr batches), and checkpoint freq."
     echo
+    echo "Edit the script for other options shown below."
+    echo
+
+    ShowOpts
 }
 
 
@@ -80,14 +111,6 @@ done
 shift $((OPTIND - 1))
 
 
-function ShowOpts {
-    echo "Running with following options:"
-    echo "MAXSTEPS = ${MAXSTEPS}"
-    echo "VALSTEPS = ${VALSTEPS}"
-    echo "RUNNAME = ${RUNNAME}"
-    echo
-}
-
 ShowOpts
 
 
@@ -117,15 +140,15 @@ cd "${SCRIPT_DIR}"
 
 source ${SCRIPT_DIR}/.venv/bin/activate
 
+
 # -- Paths
 
 RUNDIR=./Runs
 
-DATADIR=../../Data/Arc/vcc_curated
-
-OUTPUTDIR=${RUNDIR}/vcc_gx
+OUTPUTDIR="${RUNDIR}/${RUN_SUBDIR}"
 
 TRNG_LOGFILE="${RUNDIR}/log_${RUNNAME}.txt"
+
 
 # Capture all remaining output to TRNG_LOGFILE
 
@@ -158,11 +181,12 @@ fi
 # --  Train
 
 echo "Starting training ..."
+echo
 
 # Checkpoint after every validation
 
 uv run state tx train \
-  +experiment=vcc_czi \
+  +experiment=${EXPERIMENT} \
   datadir="${DATADIR}" \
   training.max_steps=${MAXSTEPS} \
   training.val_freq=${VALSTEPS} \
@@ -190,6 +214,7 @@ echo
 # -- Predict and score
 
 echo "Starting prediction ..."
+echo
 
 uv run state tx predict --output-dir "${OUTPUTDIR}/${RUNNAME}" --checkpoint "last.ckpt"
 

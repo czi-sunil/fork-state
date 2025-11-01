@@ -10,6 +10,11 @@ import scanpy as sc
 import hdf5plugin
 
 
+# -----------------------------------------------------------------------------
+# Functions
+# -----------------------------------------------------------------------------
+
+
 def reset_df_index(df: pd.DataFrame, restart: int = 1) -> pd.DataFrame:
     """Convenience function"""
     df = df.reset_index(drop=True)

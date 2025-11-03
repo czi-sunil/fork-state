@@ -33,7 +33,7 @@ MAXSTEPS=4000
 VALSTEPS=200
 
 # Path to experiment's data
-DATADIR=/mnt/vcm-perturbation-v1/sunil/pertai/Data/Arc/vcc_curated
+DATADIR=/mnt/vcm-perturbation-v1/jtomczak/pertai/Data/Arc/vcc_curated
 
 # Experiment name (base name of config file)
 EXPERIMENT=vcc_cpa

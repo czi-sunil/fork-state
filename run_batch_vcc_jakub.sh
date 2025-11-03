@@ -36,7 +36,7 @@ VALSTEPS=200
 DATADIR=/mnt/vcm-perturbation-v1/sunil/pertai/Data/Arc/vcc_curated
 
 # Experiment name (base name of config file)
-EXPERIMENT=vcc_state_sm
+EXPERIMENT=vcc_cpa
 
 # Run sub-dir
 RUN_SUBDIR="vcc_gx"

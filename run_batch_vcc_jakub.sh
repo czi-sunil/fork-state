@@ -6,8 +6,8 @@
 # The code automatically uses GPU if available.
 #
 # NOTE: Set your WANDB API Key in the following var first!
-#	WANDB_API_KEY
-#	WANDB_BASE_URL ... default value is "https://czi.wandb.io"
+WANDB_API_KEY=54feab92f0927593fd4b262972ab92188da9d64b
+WANDB_BASE_URL=https://czi.wandb.io
 #
 
 # Exit on any error

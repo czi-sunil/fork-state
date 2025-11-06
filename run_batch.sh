@@ -15,9 +15,13 @@
 # Exit on any error
 set -e
 
-# --
+# -- Get path to this script
 
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+# Get the absolute full path of the script, resolving any symlinks
+SCRIPT_FULL_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+
+# Extract the directory from the absolute path
+SCRIPT_DIR="$(dirname "$SCRIPT_FULL_PATH")"
 
 CMD=`basename -- "${BASH_SOURCE[0]}"`
 
@@ -134,13 +138,6 @@ if [ -n "$WANDB_API_KEY" ] && [ -z "$WANDB_BASE_URL" ]; then
 fi
 
 
-# -- Invoke venv
-
-cd "${SCRIPT_DIR}"
-
-source ${SCRIPT_DIR}/.venv/bin/activate
-
-
 # -- Paths
 
 RUNDIR=./Runs
@@ -150,13 +147,11 @@ OUTPUTDIR="${RUNDIR}/${RUN_SUBDIR}"
 TRNG_LOGFILE="${RUNDIR}/log_${RUNNAME}.txt"
 
 
-# Capture all remaining output to TRNG_LOGFILE
+# -- Invoke venv
 
-echo "Remaining logs captured in: ${TRNG_LOGFILE}"
+cd "${SCRIPT_DIR}"
 
-exec &> "${TRNG_LOGFILE}"
-
-ShowOpts
+source ${SCRIPT_DIR}/.venv/bin/activate
 
 
 # -- Check paths
@@ -176,6 +171,15 @@ if [ -d "${OUTPUTDIR}/${RUNNAME}" ]; then
     echo "Clearing old RUNNAME dir"
     rm -rf "${OUTPUTDIR}/${RUNNAME}"
 fi
+
+
+# -- Capture all remaining output to TRNG_LOGFILE
+
+echo "Remaining logs captured in: ${TRNG_LOGFILE}"
+
+exec &> "${TRNG_LOGFILE}"
+
+ShowOpts
 
 
 # --  Train
@@ -205,8 +209,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+trng_copmlete_date=`date`
+
 echo
 echo "   Training completed"
+echo
+echo "   Started at:   ${start_date}"
+echo "   Completed at: ${trng_copmlete_date}"
 echo "-------------------------"
 echo
 
@@ -232,6 +241,7 @@ echo "-------------------------"
 echo
 
 echo "-- ${CMD} --"
-echo "Started at: ${start_date}"
-echo "All Completed at:" `date`
+echo "All started at:        ${start_date}"
+echo "Prediction started at: ${trng_copmlete_date}"
+echo "All Completed at:    " `date`
 echo

@@ -17,6 +17,7 @@ from ._cli import (
     run_tx_predict,
     run_tx_preprocess_infer,
     run_tx_preprocess_train,
+    run_tx_preprocess_splits,
     run_tx_train,
 )
 
@@ -149,6 +150,14 @@ def main():
                 case "preprocess_infer":
                     # Run inference preprocessing using argparse
                     run_tx_preprocess_infer(args.adata, args.output, args.control_condition, args.pert_col, args.seed)
+                # [Sunil] Added
+                case "preprocess_splits":
+                    # Run preprocessing using argparse
+                    run_tx_preprocess_splits(args.train_split, args.test_split,
+                                             output_dir = args.output_dir,
+                                             num_hvgs = args.num_hvgs,
+                                             target_sum = args.target_sum,
+                                             )
 
         # [Sunil] Added for testing
         case "tx2":

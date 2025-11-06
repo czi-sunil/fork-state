@@ -6,6 +6,7 @@ from ._tx import (
     run_tx_predict,
     run_tx_preprocess_infer,
     run_tx_preprocess_train,
+    run_tx_preprocess_splits,   # [Sunil] Added
     run_tx_train,
 )
 
@@ -18,6 +19,7 @@ __all__ = [
     "run_tx_infer",
     "run_tx_preprocess_train",
     "run_tx_preprocess_infer",
+    "run_tx_preprocess_splits",   # [Sunil] Added
     "run_emb_fit",
     "run_emb_query",
     "run_emb_transform",

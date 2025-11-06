@@ -3,6 +3,8 @@ For testing the cell-load PerturbationDataModule
 """
 
 from collections import defaultdict
+import contextlib
+from datetime import datetime
 import logging
 import os
 
@@ -24,10 +26,43 @@ from cell_load.data_modules.perturbation_dataloader import PerturbationDataModul
 # -----------------------------------------------------------------------------
 
 
+@contextlib.contextmanager
+def timed_exec(name: str,
+               *,
+               prefix: str = "-*- Time to",
+               pre_msg: str = None,
+               time_as_suffix_to_pre_msg=False,
+               file=None,
+               ):
+    """
+    Use this to print execution times of blocks.
+    IF `time_as_suffix_to_pre_msg` AND `pre_msg` THEN
+        run-time is added to end of line of `pre_msg`, and `name` is ignored
+
+    >>> with timed_exec("running test", pre_msg="Testing ..."):
+    >>>     ...
+    """
+    if pre_msg is not None:
+        print(pre_msg, file=file, end="" if time_as_suffix_to_pre_msg else "\n", flush=True)
+    else:
+        time_as_suffix_to_pre_msg = False
+
+    t0 = datetime.now()
+    yield
+    if time_as_suffix_to_pre_msg:
+        print("", datetime.now() - t0, file=file, flush=True)
+    else:
+        print(prefix, name, "=", datetime.now() - t0, file=file, flush=True)
+
+    print(flush=True)
+    return
+
+
 def get_data_module(toml_path: str = "../../../Data/Arc/vcc_curated/test.toml",
                     cell_set_sz=4,
                     batch_sz=2,
-                    cache_perturbation_control_pairs=False):
+                    cache_perturbation_control_pairs=False,  # Default in PerturbationDataModule, not set anywhere else.
+                    ):
 
     print("Loading toml file:", toml_path)
     print()
@@ -48,6 +83,82 @@ def get_data_module(toml_path: str = "../../../Data/Arc/vcc_curated/test.toml",
                                  )
 
     return pdm
+
+
+def time_data_loader(dataset_name: str = "VCC",
+                     num_workers=4,
+                     cell_set_sz=128,
+                     batch_sz=16,
+                     n_batches=5,
+                     ):
+
+    print("time_data_loader args:")
+    print(f"   {dataset_name=}")
+    print(f"   {num_workers=}")
+    print(f"   {cell_set_sz=}")
+    print(f"   {batch_sz=}")
+    print(f"   {n_batches=}")
+
+    dataset_name = dataset_name.lower()
+
+    if dataset_name == "vcc":
+        toml_path: str = "../../../Data/Arc/vcc_curated/statecfg.toml"
+    elif dataset_name.lower() == "xaira":
+        toml_path: str = "../../../Data/CZI/Xaira/cell-load.toml"
+    else:
+        raise NotImplementedError(f"{dataset_name=}")
+
+    print(f"   {toml_path=}")
+    print()
+
+    with timed_exec("Init PerturbationDataModule", pre_msg="Initting PerturbationDataModule ..."):
+        if dataset_name == "vcc":
+            pdm = PerturbationDataModule(toml_path,
+                                         batch_size=batch_sz,
+                                         pert_col="target_gene",
+                                         batch_col="batch",
+                                         cell_type_key="tissue_ontology_term_id",
+                                         control_pert="non-targeting",
+                                         embed_key="X_hvg",
+                                         output_space="gene",
+                                         basal_mapping_strategy="random",
+                                         cell_sentence_len=cell_set_sz,
+                                         num_workers=num_workers,
+                                         barcode=False,
+                                         )
+        else:
+            pdm = PerturbationDataModule(toml_path,
+                                         batch_size=batch_sz,
+                                         pert_col="perturbation_name",
+                                         batch_col="sample",
+                                         cell_type_key="tissue_ontology_term_id",
+                                         control_pert="Non-Targeting",
+                                         embed_key="X_hvg",
+                                         output_space="gene",
+                                         basal_mapping_strategy="random",
+                                         cell_sentence_len=cell_set_sz,
+                                         num_workers=num_workers,
+                                         barcode=False,
+                                         )
+        pdm.setup("fit")
+
+    print()
+
+    with timed_exec("get Training DataLoader", pre_msg="Getting Training DataLoader ..."):
+        train_loader = pdm.train_dataloader()
+
+    start_time = datetime.now()
+
+    with timed_exec(f"fetch {n_batches} batches", pre_msg=f"Processing {n_batches} batches ..."):
+        for bn, batch in enumerate(train_loader, start=1):
+            if bn == 1:
+                print("  ... time to first batch =", datetime.now() - start_time)
+            print("  Got batch nbr", bn, flush=True)
+            if bn == n_batches:
+                break
+
+    print("Finished!")
+    return
 
 
 def create_anndata(cell_type: str = "CT_1", n_perts=8, n_cells_per_pert=10, n_genes=10):
@@ -124,7 +235,8 @@ def create_dummy_splits(outdir: str):
 
     # ---
     def write_split(x_adata, x_split, x_cell_type):
-        out_path = f"{outdir}/{x_cell_type}_{x_split}.h5ad"
+        out_file_basename = f"{x_cell_type}_{x_split}.h5ad"
+        out_path = f"{outdir}/{out_file_basename}"
 
         print("Writing:", out_path)
         print(f"    Dataset shape: {x_adata.shape}")
@@ -132,7 +244,8 @@ def create_dummy_splits(outdir: str):
 
         x_adata.write_h5ad(out_path)
 
-        return os.path.abspath(out_path)
+        # return os.path.abspath(out_path)
+        return out_file_basename
     # ---
 
     pert_col = "target_gene"
@@ -168,6 +281,11 @@ def create_dummy_splits(outdir: str):
         split_file_paths[ct]["trng"] = write_split(adata_trng, "trng", ct)
         split_file_paths[ct]["test"] = write_split(adata_test, "test", ct)
 
+    # --- Write a basic README file
+    with open(f"{outdir}/README.txt", "w") as f:
+        print("Test dir created by `Arc/state/src/test_loader.create_dummy_splits()`", file=f)
+        print("for testing pre-split files with Arc/cell-load", file=f)
+
     # --- Write the TOML
 
     toml_path = f"{outdir}/split1.toml"
@@ -180,7 +298,7 @@ def create_dummy_splits(outdir: str):
                 write_splits = ["all"]
 
             for split in write_splits:
-                print(f'{ct}_{split} = "{ct_files[split]}"', file=f)
+                print(f'{ct}_{split} = "${{toml_dir}}/{ct_files[split]}"', file=f)
 
         print(file=f)
 
@@ -330,7 +448,12 @@ def test_all_loaders(toml_path: str = "tmp/split2.toml", log_info=False):
 if __name__ == "__main__":
 
     import argparse
-    from datetime import datetime
+
+    # --- Defaults
+
+    DEFAULT_N_BATCHES = 5
+    DEFAULT_NUM_WORKERS = 4
+    # ---
 
     _argparser = argparse.ArgumentParser(
         description='Test cell-load PerturbationDataModule Data-Loaders.',
@@ -356,12 +479,22 @@ if __name__ == "__main__":
     _sub_cmd_parser.add_argument('toml', type=str,
                                  help="Path to TOML file.")
 
+    # ... timeloader [-n N_BATCHES]
+    _sub_cmd_parser = _subparsers.add_parser('timeloader',
+                                             help="Time Test of data loader.")
+    _sub_cmd_parser.add_argument("-n", '--n_batches', type=int, default=DEFAULT_N_BATCHES,
+                                 help=f"Nbr of batches (default {DEFAULT_N_BATCHES}).")
+    _sub_cmd_parser.add_argument("-w", '--num_workers', type=int, default=DEFAULT_NUM_WORKERS,
+                                 help=f"Nbr of workers (default {DEFAULT_NUM_WORKERS}).")
+    _sub_cmd_parser.add_argument('dataset', type=str, choices=["xaira", "vcc"],
+                                 help="Name of the dataset.")
+
     # ...
 
     _args = _argparser.parse_args()
     # .................................................................................................
 
-    start_time = datetime.now()
+    start_time_ = datetime.now()
 
     print("---------------------------------------------------------------------")
 
@@ -373,11 +506,15 @@ if __name__ == "__main__":
 
         test_all_loaders(_args.toml, log_info=_args.log_info)
 
+    elif _args.subcmd == 'timeloader':
+
+        time_data_loader(dataset_name=_args.dataset, n_batches = _args.n_batches, num_workers=_args.num_workers)
+
     else:
 
         raise NotImplementedError(f"Command not implemented: {_args.subcmd}")
 
     # /
 
-    print('\nTotal Run time =', datetime.now() - start_time)
+    print('\nTotal Run time =', datetime.now() - start_time_)
     print()

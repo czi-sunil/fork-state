@@ -12,11 +12,11 @@ defaults:
 log_level: "INFO"     # One of: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
 datadir: ???          # Required. Dir where all input data files are. Used below.
 
-# Sub-level params
+# Sub-level param overrides
 
 data:
   kwargs:
-    num_workers: 8
+    num_workers: 4                              # Note: Check how many num_workers supported on machine!
     # About the data file
     batch_col: "sample"                         # col-name for the batch label
     pert_col: "perturbation_name"               # col-name for the Perturbation label
@@ -28,3 +28,11 @@ data:
     toml_config_path: "${datadir}/cell-load.toml"  # Describes the data
     # Genetic perturbation features, based on tergeted gene,  from ESM2
     # perturbation_features_file: "${datadir}/ESM2_pert_features.pt"    # torch dict: targeted gene -> embedding vector
+
+model:
+  kwargs:
+    cell_set_len: 256       # Increased
+
+training:
+  batch_size: 32            # Increased
+  lr: 2e-4                  # Increased

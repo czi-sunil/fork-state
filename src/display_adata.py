@@ -40,6 +40,11 @@ def pp_adata(adata):
     display(adata.obs.head())
     print()
 
+    if 'tissue_ontology_term_id' in adata.obs:
+        print("-- Unique values in adata.obs['tissue_ontology_term_id']:")
+        print("   ", adata.obs['tissue_ontology_term_id'].unique())
+        print()
+
     if 'X_hvg' in adata.obsm:
         print("-- adata.obsm['X_hvg']")
         # noinspection PyUnresolvedReferences

@@ -86,7 +86,7 @@ def get_data_module(toml_path: str = "../../../Data/Arc/vcc_curated/test.toml",
 
 
 def time_data_loader(dataset_name: str = "VCC",
-                     num_workers=4,
+                     num_workers=1,
                      cell_set_sz=128,
                      batch_sz=16,
                      n_batches=5,
@@ -99,20 +99,27 @@ def time_data_loader(dataset_name: str = "VCC",
     print(f"   {batch_sz=}")
     print(f"   {n_batches=}")
 
-    dataset_name = dataset_name.lower()
+    is_vcc_dataset = False
 
-    if dataset_name == "vcc":
-        toml_path: str = "../../../Data/Arc/vcc_curated/statecfg.toml"
-    elif dataset_name.lower() == "xaira":
-        toml_path: str = "../../../Data/CZI/Xaira/cell-load.toml"
+    if dataset_name.endswith(".toml"):
+        toml_path = dataset_name
+        is_vcc_dataset = "vcc" in dataset_name
     else:
-        raise NotImplementedError(f"{dataset_name=}")
+        dataset_name = dataset_name.lower()
+
+        if dataset_name == "vcc":
+            toml_path: str = "../../../Data/Arc/vcc_curated/statecfg.toml"
+            is_vcc_dataset = True
+        elif dataset_name.lower() == "xaira":
+            toml_path: str = "../../../Data/CZI/Xaira/cell-load.toml"
+        else:
+            raise NotImplementedError(f"{dataset_name=}")
 
     print(f"   {toml_path=}")
     print()
 
     with timed_exec("Init PerturbationDataModule", pre_msg="Initting PerturbationDataModule ..."):
-        if dataset_name == "vcc":
+        if is_vcc_dataset:
             pdm = PerturbationDataModule(toml_path,
                                          batch_size=batch_sz,
                                          pert_col="target_gene",
@@ -452,7 +459,7 @@ if __name__ == "__main__":
     # --- Defaults
 
     DEFAULT_N_BATCHES = 5
-    DEFAULT_NUM_WORKERS = 4
+    DEFAULT_NUM_WORKERS = 1
     # ---
 
     _argparser = argparse.ArgumentParser(
@@ -486,8 +493,8 @@ if __name__ == "__main__":
                                  help=f"Nbr of batches (default {DEFAULT_N_BATCHES}).")
     _sub_cmd_parser.add_argument("-w", '--num_workers', type=int, default=DEFAULT_NUM_WORKERS,
                                  help=f"Nbr of workers (default {DEFAULT_NUM_WORKERS}).")
-    _sub_cmd_parser.add_argument('dataset', type=str, choices=["xaira", "vcc"],
-                                 help="Name of the dataset.")
+    _sub_cmd_parser.add_argument('dataset', type=str,
+                                 help="Name of the dataset ('xaira' or 'vcc') or path to toml file.")
 
     # ...
 

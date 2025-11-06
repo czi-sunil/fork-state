@@ -112,3 +112,8 @@ echo "   Preprocessing completed"
 echo "   Output is in: " `dirname ${TRAINING_SPLIT_FILE}`
 echo "-------------------------"
 echo
+
+echo "-- ${CMD} --"
+echo "All started at:      ${start_date}"
+echo "All Completed at:    " `date`
+echo

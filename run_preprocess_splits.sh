@@ -100,11 +100,18 @@ uv run state tx preprocess_splits \
   --num_hvgs ${NUM_HVGS} \
   --target_sum ${TARGET_SUM}
 
-if [ $? -ne 0 ]; then
+status=$?
+
+if [ $status -ne 0 ]; then
     echo
     echo "Failed to complete preprocessing!"
     echo
-    exit 1
+
+    if [ $status -eq 137 ]; then
+        echo "Exit status = ${status}, likely OOM error"
+        echo
+    fi
+    exit $status
 fi
 
 echo

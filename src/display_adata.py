@@ -36,14 +36,24 @@ def pp_adata(adata):
     display(adata)
     print()
 
+    # ---
+    def pp_obs_fld(fld):
+        if fld in adata.obs:
+            print(f"-- Values in adata.obs['{fld}']:")
+            uniq = adata.obs[fld].unique()
+            print(f"    nbr Unique values = {len(uniq):,d}")
+            print(f"    first few values = {uniq[:10].tolist()}")
+            print()
+        return
+    # ---
+
     print('-- Display adata.obs.head:')
     display(adata.obs.head())
     print()
 
-    if 'tissue_ontology_term_id' in adata.obs:
-        print("-- Unique values in adata.obs['tissue_ontology_term_id']:")
-        print("   ", adata.obs['tissue_ontology_term_id'].unique())
-        print()
+    pp_obs_fld('tissue_ontology_term_id')
+    pp_obs_fld('perturbation_name')
+    pp_obs_fld('target_gene')
 
     if 'X_hvg' in adata.obsm:
         print("-- adata.obsm['X_hvg']")
@@ -104,3 +114,66 @@ def pp_train_test_splits(train_file, test_file):
     print(df['total_count  train_pct  test_pct'.split()].to_markdown(floatfmt=['', ',.0f', '.2f', '.2f']))
 
     return adata_train, adata_test
+
+
+# ======================================================================================================
+#   Main
+# ======================================================================================================
+
+# To run
+# ------
+#
+# [Python]$ python -m test_loader loaders tmp/split2.toml
+#
+#
+
+if __name__ == "__main__":
+
+    import argparse
+    from datetime import datetime
+
+    _argparser = argparse.ArgumentParser(
+        description='Display AnnData objects.',
+    )
+
+    _subparsers = _argparser.add_subparsers(dest='subcmd',
+                                            title='Available commands',
+                                            )
+    # Make the sub-commands required
+    _subparsers.required = True
+
+    # ... pp ADATA_PATH
+    _sub_cmd_parser = _subparsers.add_parser('pp',
+                                             help="DIspay summary of AnnData.")
+    _sub_cmd_parser.add_argument('adata_path', type=str,
+                                 help="Path to AnnData h5ad file.")
+
+    # ... loaders TOML_PATH
+    _sub_cmd_parser = _subparsers.add_parser('loaders',
+                                             help="Test data loaders for TOML.")
+    _sub_cmd_parser.add_argument("-l", '--log_info', action="store_true",
+                                 help="Log INFO messages.")
+    _sub_cmd_parser.add_argument('toml', type=str,
+                                 help="Path to TOML file.")
+
+    # ...
+
+    _args = _argparser.parse_args()
+    # .................................................................................................
+
+    start_time_ = datetime.now()
+
+    print("---------------------------------------------------------------------")
+
+    if _args.subcmd == 'pp':
+
+        pp_adata(_args.adata_path)
+
+    else:
+
+        raise NotImplementedError(f"Command not implemented: {_args.subcmd}")
+
+    # /
+
+    print('\nTotal Run time =', datetime.now() - start_time_)
+    print()

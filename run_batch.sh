@@ -120,7 +120,8 @@ ShowOpts
 
 # -- wandb
 
-if [[ -z "$WANDB_API_KEY" && "${SCRIPT_DIR}" == /mnt/* ]]; then
+if [[ -z "$WANDB_API_KEY" && "${SCRIPT_DIR}" == /mnt/*/sunil/* ]]; then
+    
     MY_INIT_SCR="/mnt/vcm-perturbation-v1/sunil/cluster.sh"
 
     if [ -e "${MY_INIT_SCR}" ]; then
@@ -157,7 +158,8 @@ source ${SCRIPT_DIR}/.venv/bin/activate
 # -- Check paths
 
 if [ ! -d "${RUNDIR}" ]; then
-    mkdir -pv $RUNDIR
+    echo "Creating dir: ${RUNDIR}"
+    mkdir -p $RUNDIR
 fi
 
 if [ ! -d "${DATADIR}" ]; then
@@ -168,7 +170,7 @@ fi
 # If RUNNAME exists then delete it
 
 if [ -d "${OUTPUTDIR}/${RUNNAME}" ]; then
-    echo "Clearing old RUNNAME dir"
+    echo "Clearing old RUNNAME dir:  ${OUTPUTDIR}/${RUNNAME}"
     rm -rf "${OUTPUTDIR}/${RUNNAME}"
 fi
 
@@ -197,7 +199,7 @@ uv run state tx train \
   training.ckpt_every_n_steps=${VALSTEPS} \
   training.devices=auto \
   wandb.tags="[${RUNNAME}]" \
-  wandb.project=pert-vcc-st \
+  wandb.project=pert-state \
   wandb.entity="" \
   output_dir="${OUTPUTDIR}" \
   name="${RUNNAME}"

@@ -108,7 +108,7 @@ def time_data_loader(dataset_name: str = "VCC",
         dataset_name = dataset_name.lower()
 
         if dataset_name == "vcc":
-            toml_path: str = "../../../Data/Arc/vcc_curated/statecfg.toml"
+            toml_path: str = "../../../Data/Arc/vcc_curated/cell-load.toml"
             is_vcc_dataset = True
         elif dataset_name.lower() == "xaira":
             toml_path: str = "../../../Data/CZI/Xaira/cell-load.toml"
@@ -118,6 +118,7 @@ def time_data_loader(dataset_name: str = "VCC",
     print(f"   {toml_path=}")
     print()
 
+    # noinspection PyArgumentList
     with timed_exec("Init PerturbationDataModule", pre_msg="Initting PerturbationDataModule ..."):
         if is_vcc_dataset:
             pdm = PerturbationDataModule(toml_path,
@@ -131,7 +132,7 @@ def time_data_loader(dataset_name: str = "VCC",
                                          basal_mapping_strategy="random",
                                          cell_sentence_len=cell_set_sz,
                                          num_workers=num_workers,
-                                         barcode=False,
+                                         barcode=True,
                                          )
         else:
             pdm = PerturbationDataModule(toml_path,
@@ -145,22 +146,33 @@ def time_data_loader(dataset_name: str = "VCC",
                                          basal_mapping_strategy="random",
                                          cell_sentence_len=cell_set_sz,
                                          num_workers=num_workers,
-                                         barcode=False,
+                                         barcode=True,
                                          )
         pdm.setup("fit")
 
     print()
 
+    # noinspection PyArgumentList
     with timed_exec("get Training DataLoader", pre_msg="Getting Training DataLoader ..."):
         train_loader = pdm.train_dataloader()
 
     start_time = datetime.now()
 
+    # noinspection PyArgumentList
     with timed_exec(f"fetch {n_batches} batches", pre_msg=f"Processing {n_batches} batches ..."):
         for bn, batch in enumerate(train_loader, start=1):
             if bn == 1:
                 print("  ... time to first batch =", datetime.now() - start_time)
+                print()
+
             print("  Got batch nbr", bn, flush=True)
+
+            if bn == 1:
+                print()
+                for fld in ["pert_name", "batch_name", "pert_cell_barcode", "ctrl_cell_barcode"]:
+                    print("  ...", fld, "=", batch[fld][:5])
+                print()
+
             if bn == n_batches:
                 break
 

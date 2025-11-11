@@ -167,8 +167,7 @@ source ${SCRIPT_DIR}/.venv/bin/activate
 # -- Check paths
 
 if [ ! -d "${RUNDIR}" ]; then
-    echo "Creating dir: ${RUNDIR}"
-    mkdir -p $RUNDIR
+    mkdir -pv $RUNDIR
 fi
 
 if [ ! -d "${DATADIR}" ]; then
@@ -214,7 +213,7 @@ uv run state tx train \
   training.ckpt_every_n_steps=${VALSTEPS} \
   training.devices=auto \
   wandb.tags="[${RUNNAME}]" \
-  wandb.project=pert-state \
+  wandb.project=pert-vcc-state \
   wandb.entity="" \
   output_dir="${OUTPUTDIR}" \
   name="${RUNNAME}"

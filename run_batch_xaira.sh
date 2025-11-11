@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Train the State model on VCC-curated dataset
+# Train the State model on curated Xaira dataset
 # 
 #
 # The code automatically uses all GPUs, if available.
@@ -45,10 +45,10 @@ RESUME=
 # -- Options: edit here
 
 # Path to this experiment's data
-DATADIR=../../Data/Arc/vcc_curated
+DATADIR=../../Data/CZI/Xaira
 
 # Experiment name (base name of config file)
-EXPERIMENT=vcc_state_sm
+EXPERIMENT=xaira_state_sm
 
 # Run sub-dir
 RUN_SUBDIR="vcc_gx"

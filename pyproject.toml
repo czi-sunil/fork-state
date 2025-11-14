@@ -44,8 +44,8 @@ dependencies = [
 
 # [Sunil] Relative paths to the following local dependencies
 [tool.uv.sources]
-cell-load = { path = "../cell-load", editable = true }
-# cell-eval = { path = "../cell-eval", editable = true }
+cell-load = { path = "../fork-cell-load", editable = true }
+# cell-eval = { path = "../fork-cell-eval", editable = true }
 
 [project.optional-dependencies]
 vectordb = [

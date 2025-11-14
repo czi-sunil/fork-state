@@ -151,6 +151,8 @@ def write_preprocessed_adata(adata, adata_path: str, outdir: str | None):
         output_path = adata_path.with_name(output_filename)
 
     logger.info(f"Saving preprocessed data to {output_path}")
-    adata.write_h5ad(output_path, compression=hdf5plugin.FILTERS["zstd"])
+
+    # DO NOT compress this file, as that makes the data-loader v. slow
+    adata.write_h5ad(output_path, compression=None)
 
     return

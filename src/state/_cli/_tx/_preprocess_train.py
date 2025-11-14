@@ -59,9 +59,9 @@ def run_tx_preprocess_train(adata_path: str, output_path: str, num_hvgs: int):
     adata.obsm["X_hvg"] = adata[:, adata.var.highly_variable].X.toarray()
 
     logger.info(f"Saving preprocessed data to {output_path}")
-    # [Sunil] Added zstd compression
-    # noinspection PyTypeChecker
-    adata.write_h5ad(output_path, compression=hdf5plugin.FILTERS["zstd"])
+
+    # write w/o compression
+    adata.write_h5ad(output_path)
 
     logger.info(f"Preprocessing complete. Selected {adata.var.highly_variable.sum()} highly variable genes.")
 

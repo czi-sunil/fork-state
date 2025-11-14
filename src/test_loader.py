@@ -121,6 +121,7 @@ def time_data_loader(dataset_name: str = "VCC",
     # noinspection PyArgumentList
     with timed_exec("Init PerturbationDataModule", pre_msg="Initting PerturbationDataModule ..."):
         if is_vcc_dataset:
+            print("** VCC dataset")
             pdm = PerturbationDataModule(toml_path,
                                          batch_size=batch_sz,
                                          pert_col="target_gene",
@@ -135,6 +136,7 @@ def time_data_loader(dataset_name: str = "VCC",
                                          barcode=True,
                                          )
         else:
+            print("** Xaira dataset")
             pdm = PerturbationDataModule(toml_path,
                                          batch_size=batch_sz,
                                          pert_col="perturbation_name",
@@ -148,6 +150,7 @@ def time_data_loader(dataset_name: str = "VCC",
                                          num_workers=num_workers,
                                          barcode=True,
                                          )
+
         pdm.setup("fit")
 
     print()

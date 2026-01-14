@@ -5,7 +5,7 @@ device: cuda
 kwargs:
   cell_set_len: 128
   blur: 0.05
-  hidden_dim: 672  # hidden dimension going into the transformer backbone
+  hidden_dim: 672      # hidden dimension going into the transformer backbone
   loss: energy
   confidence_head: False
   n_encoder_layers: 4
@@ -20,9 +20,9 @@ kwargs:
   nb_decoder: False
   mask_attn: False
   use_effect_gating_token: False
-  use_basal_projection: False
+  use_basal_projection: False   # Default is True. Control cells get simple linear projection.
   distributional_loss: energy
-  gene_decoder_bool: False
+  gene_decoder_bool: False      # Default is True. Used in `state.tx.models.base.PerturbationModel`
   init_from: null
   transformer_backbone_key: llama
   transformer_backbone_kwargs:

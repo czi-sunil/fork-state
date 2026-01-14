@@ -518,21 +518,6 @@ class StateTransitionPerturbationModel(PerturbationModel):
     def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int, padded=True) -> torch.Tensor:
         """Training step logic for both main model and decoder."""
 
-        # [Sunil] Added
-        if DEBUG and batch_idx < 4:
-            with buffered_stdout():
-                print("\n***********************************************************")
-                print(f"StateTransitionPerturbationModel.training_step: {batch_idx=}, {self.training=}, {self.device=}")
-
-                if dist.is_available() and dist.is_initialized():
-                    dist_world_size = dist.get_world_size()
-                    dist_rank = dist.get_rank()
-                    print(f"... World size: {dist_world_size}, rank: {dist_rank}")
-                    print()
-
-                pp_arr_struct("batch", batch)
-                print("\n***********************************************************\n")
-
         # Get model predictions (in latent space)
         confidence_pred = None
         if self.confidence_token is not None:
@@ -548,6 +533,27 @@ class StateTransitionPerturbationModel(PerturbationModel):
         else:
             pred = pred.reshape(1, -1, self.output_dim)
             target = target.reshape(1, -1, self.output_dim)
+
+        # [Sunil] Added
+        if DEBUG and batch_idx < 2:
+            with buffered_stdout():
+                print("\n***********************************************************")
+                print(f"StateTransitionPerturbationModel.training_step: {batch_idx=}, {self.training=}, {self.device=}")
+
+                if dist.is_available() and dist.is_initialized():
+                    dist_world_size = dist.get_world_size()
+                    dist_rank = dist.get_rank()
+                    print(f"... World size: {dist_world_size}, rank: {dist_rank}")
+                    print()
+
+                pp_arr_struct("batch", batch)
+                print("---")
+                print(f"{padded = }")
+                print("---")
+                pp_arr_struct("pred", pred)
+                print("---")
+                pp_arr_struct("target", target)
+                print("\n***********************************************************\n")
 
         main_loss = self.loss_fn(pred, target).nanmean()
         self.log("train_loss", main_loss)

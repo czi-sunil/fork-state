@@ -17,7 +17,7 @@ kwargs:
   finetune_vci_decoder: False
   residual_decoder: False
   batch_encoder: False
-  use_batch_token: False
+  use_batch_token: False    # Default is False.
   nb_decoder: False
   mask_attn: False
   use_effect_gating_token: False

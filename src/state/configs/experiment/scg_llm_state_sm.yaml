@@ -1,0 +1,41 @@
+# @package _global_
+#
+# config for SCG-LLM on `state_sm`
+#
+
+defaults:
+  - override /data: perturbation
+  - override /model: state_sm
+
+# Top level parameters
+
+log_level: "INFO"     # One of: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
+datadir: ???          # Required. Dir where all input data files are. Used below.
+
+# Sub-level params
+
+data:
+  kwargs:
+    # Override as: data.kwargs.PARAM=VAL
+    num_workers: 12
+    # About the data file ... defaults for `parse1m` ...
+    batch_col: "donor"                          # col-name for the batch label
+    pert_col: "cytokine"                        # col-name for the Perturbation label
+    cell_type_key: "cell_type"                  # col-name for the Cell-Type
+    control_pert: "PBS"                         # Perturbation label value for Control Cells
+    embed_key: "X_hvg"                          # Tell ST to use HVGs, from `adata.obsm["X_hvg"]`
+    output_space: "gene"                        # ST model, predicting gene expression.
+    # Data files
+    toml_config_path: "${datadir}/cell-load.toml"  # Describes the data
+    # Genetic perturbation features, based on tergeted gene,  from ESM2
+    # perturbation_features_file: "${datadir}/ESM2_pert_features.pt"    # torch dict: targeted gene -> embedding vector
+
+# Override params of model
+model:
+  kwargs:
+    batch_encoder: True
+
+# Training defaults
+training:
+  batch_size: 64
+  lr: 1e-3

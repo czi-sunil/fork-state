@@ -65,6 +65,8 @@ def get_data_module(toml_path: str = "../../../Data/Arc/vcc_curated/test.toml",
                     ):
 
     print("Loading toml file:", toml_path)
+    print(f"   {cell_set_sz = }")
+    print(f"   {batch_sz    = }")
     print()
 
     pdm = PerturbationDataModule(toml_path,
@@ -183,11 +185,11 @@ def time_data_loader(dataset_name: str = "VCC",
     return
 
 
-def create_anndata(cell_type: str = "CT_1", n_perts=8, n_cells_per_pert=10, n_genes=10):
+def create_anndata(cell_type: str = "CT_1", n_perts=8, n_cells_per_pert=10, n_genes=10, base_count=0):
 
     step = 1 / n_genes
     n_cells = n_perts * n_cells_per_pert
-    counts = np.arange(1.0, n_cells + 1, step, dtype=np.float32).reshape(n_cells, n_genes)
+    counts = np.arange(1.0, n_cells + 1, step, dtype=np.float32).reshape(n_cells, n_genes) + base_count
     adata = ad.AnnData(csr_matrix(counts))
 
     adata.obs_names = [f"Cell_{i+1:d}" for i in range(adata.n_obs)]
@@ -201,7 +203,7 @@ def create_anndata(cell_type: str = "CT_1", n_perts=8, n_cells_per_pert=10, n_ge
     # batch ... all the same
     adata.obs["batch"] = pd.Categorical(np.repeat("batch", adata.n_obs))
 
-    # HVG's ... just take the top 5
+    # HVG's ... just take (up to) the top 5
     num_hvgs = min(5, n_genes // 2)
 
     # ... copy and pre-process for `sc.pp.highly_variable_genes`. This will create all the metadata.
@@ -211,7 +213,7 @@ def create_anndata(cell_type: str = "CT_1", n_perts=8, n_cells_per_pert=10, n_ge
     sc.pp.highly_variable_genes(adata2, n_top_genes=num_hvgs)
 
     adata.var = adata2.var
-    # Mark only the first 5 as HVG
+    # Mark only the first `num_hvgs` as HVG
     adata.var['highly_variable'][:num_hvgs] = True
     adata.var['highly_variable'][num_hvgs:] = False
 
@@ -410,8 +412,8 @@ def summarize_loader(name, dl):
     # -- pp summary
 
     print()
-    print("nbr Batches =", n_batches)
-    print("nbr samples =", tot_n_vals)
+    print("nbr Batches fetched =", n_batches)
+    print("nbr samples fetched =", tot_n_vals)
     print("Cell types  =", ", ".join(sorted(uniq_vals.keys())))
     print_flds = ("pert_cell_emb, ctrl_cell_emb, pert_name, "
                   "batch, batch_name, pert_cell_barcode, ctrl_cell_barcode").split(", ")

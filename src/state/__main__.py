@@ -1,8 +1,12 @@
 import argparse as ap
 import logging      # [Sunil] Added
+import json         # [Sunil] Added
+
+import yaml         # [Sunil] Added
 
 from hydra import compose, initialize
 from omegaconf import DictConfig, OmegaConf
+from state.utils import deep_diff_dicts
 
 from ._cli import (
     add_arguments_emb,
@@ -30,7 +34,7 @@ def get_args() -> tuple[ap.Namespace, list[str]]:
     add_arguments_tx(subparsers.add_parser("tx"))
 
     # [Sunil] Added copy of "tx" except one required arg
-    add_arguments_tx2(subparsers.add_parser("tx2"))
+    add_arguments_tx2(subparsers.add_parser("tx2", help="Compare run hydra config to Reference config."))
 
     # Use parse_known_args to get both known args and remaining args
     return parser.parse_args()
@@ -163,18 +167,32 @@ def main():
         case "tx2":
             match args.subcommand:
                 case "train":
+                    # Displays the difference of current run's config from a reference run/config.yaml
+
                     if hasattr(args, "help") and args.help:
                         # Show Hydra configuration help
                         show_hydra_help("tx2")
-                    else:
-                        # Load Hydra config with overrides for sets training
-                        cfg = load_hydra_config("tx2", args.hydra_overrides)
-                        print()
-                        print(f"data.kwargs.toml_config_path =", cfg.data.kwargs.toml_config_path)
-                        print(f"data.kwargs.perturbation_features_file =", cfg.data.kwargs.perturbation_features_file)
-                        print()
-                        print(OmegaConf.to_yaml(cfg, resolve=True))
-                        # run_tx_train(cfg)
+                        return
+
+                    print("Reference config path:", args.reference_config)
+                    with open(args.reference_config) as cfg:
+                        ref_cfg_dict = yaml.safe_load(cfg)
+                    print()
+
+                    # Load Hydra config with overrides for sets training
+                    cfg = load_hydra_config("tx2", args.hydra_overrides)
+                    print()
+                    print(f"data.kwargs.toml_config_path =", cfg.data.kwargs.toml_config_path)
+                    print(f"data.kwargs.perturbation_features_file =", cfg.data.kwargs.perturbation_features_file)
+                    print()
+                    print(OmegaConf.to_yaml(cfg, resolve=True))
+                    # run_tx_train(cfg)
+                    print()
+                    print("Diff between ref and run:")
+                    run_cfg_dict = OmegaConf.to_container(cfg, resolve=True)
+                    print(json.dumps(deep_diff_dicts(ref_cfg_dict, run_cfg_dict), indent=4))
+                    print()
+
                 case _:
                     raise NotImplementedError(f"Command not implemented: {args.command} {args.subcommand}")
 

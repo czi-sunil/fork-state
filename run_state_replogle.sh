@@ -13,7 +13,7 @@
 #
 
 # Exit on any error
-# set -e
+set -e
 
 # -- Get path to this script
 
@@ -38,21 +38,29 @@ MAXSTEPS=100000
 # Recommended: 20000
 VALSTEPS=4000
 
+# Resume from Checkpoint?
+RESUME=
 
 
 # -- Options: edit here
 
 # Path to this experiment's data
-DATADIR=../../Data/Arc/Replogle-Nadig-Preprint
+DATADIR=/flow/Data/Replogle-Nadig-Preprint
+
+# Path to TOML file
+TOML="${DATADIR}/hepg2_pp.toml"
 
 # Experiment name (base name of config file)
-EXPERIMENT=arc_replogle
+EXPERIMENT="arc_replogle"
+
+# Other qualifiers for this run
+RUNTAG="st_repr_hepg2"
 
 # Run sub-dir
-RUN_SUBDIR="test"
+RUN_SUBDIR="scLM"
 
 # Run name
-RUNNAME="${EXPERIMENT}-batch-run"
+RUNNAME="${EXPERIMENT}-${RUNTAG}"
 
 
 # -- Options from command line
@@ -71,12 +79,15 @@ function ShowOpts {
 }
 
 function Usage {
-    echo "Usage: ${CMD} [-h] [-m MAX_STEPS] [-v VALIDATION_FREQ_STEPS]"
+    echo "Usage: ${CMD} [-h] [-m MAX_STEPS] [-v VALIDATION_FREQ_STEPS] [-r]"
     echo
     echo "Defaults: MAX_STEPS=${MAXSTEPS}, VALIDATION_FREQ_STEPS=${VALSTEPS}"
     echo
     echo "  MAX_STEPS = max nbr batches for training"
     echo "  VALIDATION_FREQ_STEPS = Validation frequency (nbr batches), and checkpoint freq."
+    echo
+    echo "  -r = Resume from last checkpoint, if possible"
+    echo "       otherwise Runs/${RUN_SUBDIR}/${RUNNAME} gets deleted"
     echo
     echo "Edit the script for other options shown below."
     echo
@@ -85,7 +96,7 @@ function Usage {
 }
 
 
-OPTSTRING=":hm:v:"
+OPTSTRING=":hm:v:r"
 
 while getopts "$OPTSTRING" opt; do
   case ${opt} in
@@ -98,6 +109,9 @@ while getopts "$OPTSTRING" opt; do
       ;;
     v)
       VALSTEPS=${OPTARG}
+      ;;
+    r)
+      RESUME=1
       ;;
     \?)
       # Handles invalid options (e.g., -x)
@@ -121,7 +135,8 @@ ShowOpts
 
 # -- wandb
 
-if [[ -z "$WANDB_API_KEY" && "${SCRIPT_DIR}" == /mnt/* ]]; then
+if [[ -z "$WANDB_API_KEY" && "${SCRIPT_DIR}" == /mnt/*/sunil/* ]]; then
+    
     MY_INIT_SCR="/mnt/vcm-perturbation-v1/sunil/cluster.sh"
 
     if [ -e "${MY_INIT_SCR}" ]; then
@@ -139,13 +154,6 @@ if [ -n "$WANDB_API_KEY" ] && [ -z "$WANDB_BASE_URL" ]; then
 fi
 
 
-# -- Invoke venv
-
-cd "${SCRIPT_DIR}"
-
-source ${SCRIPT_DIR}/.venv/bin/activate
-
-
 # -- Paths
 
 RUNDIR=./Runs
@@ -155,19 +163,18 @@ OUTPUTDIR="${RUNDIR}/${RUN_SUBDIR}"
 TRNG_LOGFILE="${RUNDIR}/log_${RUNNAME}.txt"
 
 
-# -- Capture all remaining output to TRNG_LOGFILE
+# -- Invoke venv
 
-# echo "Remaining logs captured in: ${TRNG_LOGFILE}"
-#
-# exec &> "${TRNG_LOGFILE}"
+cd "${SCRIPT_DIR}"
 
-ShowOpts
+source ${SCRIPT_DIR}/.venv/bin/activate
 
 
 # -- Check paths
 
 if [ ! -d "${RUNDIR}" ]; then
-    mkdir -pv $RUNDIR
+    echo "Creating dir: ${RUNDIR}"
+    mkdir -p $RUNDIR
 fi
 
 if [ ! -d "${DATADIR}" ]; then
@@ -175,12 +182,27 @@ if [ ! -d "${DATADIR}" ]; then
     exit 1
 fi
 
-# If RUNNAME exists then delete it
+# If not Resuming from Checkpoint and RUNNAME exists then delete it
 
-if [ -d "${OUTPUTDIR}/${RUNNAME}" ]; then
-    echo "Clearing old RUNNAME dir"
+if [[ -z "${RESUME}" && -d "${OUTPUTDIR}/${RUNNAME}" ]]; then
+    echo "Clearing old RUNNAME dir:  ${OUTPUTDIR}/${RUNNAME}"
     rm -rf "${OUTPUTDIR}/${RUNNAME}"
 fi
+
+if [ -n "${RESUME}" ]; then
+    echo
+    echo "Resuming from checkpoint, if possible"
+    echo
+fi
+
+
+# -- Capture all remaining output to TRNG_LOGFILE
+
+echo "Remaining logs captured in: ${TRNG_LOGFILE}"
+
+exec &> "${TRNG_LOGFILE}"
+
+ShowOpts
 
 
 # --  Train
@@ -190,17 +212,16 @@ echo
 
 # Checkpoint after every validation
 
-uv run state tx2 \
-  ${DATADIR}/config_hepg2.yaml \
-  train \
+uv run state tx train \
   +experiment=${EXPERIMENT} \
   datadir="${DATADIR}" \
+  data.kwargs.toml_config_path="${TOML}" \
   training.max_steps=${MAXSTEPS} \
   training.val_freq=${VALSTEPS} \
   training.ckpt_every_n_steps=${VALSTEPS} \
   training.devices=auto \
   wandb.tags="[${RUNNAME}]" \
-  wandb.project=pert-vcc-st \
+  wandb.project=pert-state \
   wandb.entity="" \
   output_dir="${OUTPUTDIR}" \
   name="${RUNNAME}"
@@ -212,8 +233,39 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+trng_copmlete_date=`date`
+
 echo
 echo "   Training completed"
+echo
+echo "   Started at:   ${start_date}"
+echo "   Completed at: ${trng_copmlete_date}"
 echo "-------------------------"
 echo
 
+
+# -- Predict and score
+
+echo "Starting prediction ..."
+echo
+
+uv run state tx predict --output-dir "${OUTPUTDIR}/${RUNNAME}" --checkpoint "last.ckpt"
+
+if [ $? -ne 0 ]; then
+    echo
+    echo "Predict failed!"
+    echo
+    exit 1
+fi
+
+echo
+echo "   Predictions and Metrics completed"
+echo "   Output is in: ${OUTPUTDIR}/${RUNNAME}/eval_last.ckpt/"
+echo "-------------------------"
+echo
+
+echo "-- ${CMD} --"
+echo "All started at:        ${start_date}"
+echo "Prediction started at: ${trng_copmlete_date}"
+echo "All Completed at:    " `date`
+echo

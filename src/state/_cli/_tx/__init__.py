@@ -37,17 +37,17 @@ def add_arguments_tx(parser: ap.ArgumentParser):
 def add_arguments_tx2(parser: ap.ArgumentParser):
     """
     Copy of the "tx command",
-       # that has a required argument: CONFIG_FILE.
+       # that has a required argument: reference_config.
     Remaining args are the same.
     """
+    # required arg
+    parser.add_argument('reference_config', type=str,
+                              help="Path to Reference Hydra Config file.")
+
     subparsers = parser.add_subparsers(required=True, dest="subcommand")
 
     # Subcommand: tx2 train
     train_parser = subparsers.add_parser("train", add_help=False)
-
-    # required arg
-    # train_parser.add_argument('config_file', type=str,
-    #                           help="Path to Hydra Config file for this run.")
 
     add_arguments_train(train_parser)
 

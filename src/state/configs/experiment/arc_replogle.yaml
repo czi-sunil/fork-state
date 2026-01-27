@@ -1,0 +1,50 @@
+# @package _global_
+#
+# config for SCG-LLM on `state`
+#
+
+defaults:
+  - override /data: perturbation
+  - override /model: state
+
+# Top level parameters
+
+log_level: "INFO"     # One of: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
+datadir: ???          # Required. Dir where all input data files are. Used below.
+
+# Sub-level params
+
+data:
+  kwargs:
+    # Override as: data.kwargs.PARAM=VAL
+    num_workers: 12
+    # About the data file ... defaults for `parse1m` ...
+    batch_col: "gem_group"                      # col-name for the batch label
+    pert_col: "gene"                            # col-name for the Perturbation label
+    cell_type_key: "cell_line"                  # col-name for the Cell-Type
+    control_pert: "non-targeting"               # Perturbation label value for Control Cells
+    embed_key: "X_hvg"                          # Tell ST to use HVGs, from `adata.obsm["X_hvg"]`
+    output_space: "gene"                        # ST model, predicting gene expression.
+    # Data files
+    toml_config_path: "${datadir}/hepg2_pp.toml"  # Describes the data
+    # Genetic perturbation features, based on tergeted gene,  from ESM2
+    # perturbation_features_file: "${datadir}/ESM2_pert_features.pt"    # torch dict: targeted gene -> embedding vector
+
+# Overrides to match ref: https://huggingface.co/arcinstitute/ST-HVG-Replogle/tree/main/fewshot/hepg2/config.yaml
+model:
+  kwargs:
+    hidden_dim: 328
+    cell_set_len: 64
+    batch_encoder: True
+    # gene_encoder is used in `state.tx.models.base.PerturbationModel` for State-Emb model.
+    gene_decoder_bool: False      # Default is True. Override for State-Tx.
+    confidence_token: False       # Default is False. to match ref
+    transformer_backbone_kwargs:
+      bidirectional_attention: True
+      intermediate_size: 3072
+      head_dim: 64
+
+# Training defaults
+training:
+  batch_size: 64
+  lr: 1e-3
